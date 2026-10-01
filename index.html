@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tickerbook — live crypto prices and exchanges</title>
+<meta name="description" content="Live cryptocurrency prices from public market APIs, plus links to major regulated exchanges.">
+<style>
+:root{
+  --bg:#eef2f5; --panel:#fff; --ink:#14213d; --muted:#5b6778; --line:#d5dde5;
+  --accent:#0f6e8c; --up:#1b7f4b; --down:#c23b3b; --flash:#fff3c4;
+  --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#101820;--panel:#18232e;--ink:#e8eef4;--muted:#93a1b2;--line:#2b3a49;--accent:#5cc0de;--up:#4fcf8a;--down:#ff7b7b;--flash:#3a3820}
+}
+:root[data-theme="dark"]{--bg:#101820;--panel:#18232e;--ink:#e8eef4;--muted:#93a1b2;--line:#2b3a49;--accent:#5cc0de;--up:#4fcf8a;--down:#ff7b7b;--flash:#3a3820}
+*{box-sizing:border-box}
+html{scroll-padding-top:4rem}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--sans)}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:60rem;margin:0 auto;padding:0 1.25rem}
+header{border-bottom:1px solid var(--line);background:var(--panel)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-top:.9rem;padding-bottom:.9rem}
+.brand{font:700 1.35rem var(--serif);letter-spacing:-.01em;text-decoration:none;color:var(--ink)}
+nav{display:flex;gap:1.25rem;font-size:.95rem}
+nav a{color:var(--muted);text-decoration:none}
+nav a:hover{color:var(--ink)}
+h1{font:700 clamp(2rem,5vw,3.2rem)/1.08 var(--serif);letter-spacing:-.02em;margin:2.5rem 0 .75rem;max-width:18ch}
+.lede{color:var(--muted);max-width:52ch;margin:0 0 1.75rem}
+h2{font:700 1.5rem var(--serif);margin:3rem 0 .5rem}
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.75rem;font-size:.9rem;color:var(--muted)}
+.bar button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.35rem .8rem;cursor:pointer}
+.bar button:hover{border-color:var(--accent)}
+.tablebox{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:34rem}
+th,td{padding:.8rem 1rem;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;font-size:.85rem;color:var(--muted)}
+tbody tr:last-child td{border-bottom:0}
+.coin b{display:block}
+.coin span{color:var(--muted);font-size:.85rem}
+td.price{font-variant-numeric:tabular-nums;font-weight:600}
+td.num{font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.down{color:var(--down)}
+.flash{animation:flash 1.2s ease-out}
+@keyframes flash{from{background:var(--flash)}to{background:transparent}}
+@media (prefers-reduced-motion:reduce){.flash{animation:none}}
+.status{padding:1.25rem;color:var(--muted)}
+.status.err{color:var(--down)}
+.exlist{list-style:none;margin:1rem 0 0;padding:0;display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))}
+.exlist li{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1rem 1.1rem}
+.exlist h3{margin:0;font:700 1.1rem var(--serif)}
+.exlist p{margin:.35rem 0 .6rem;color:var(--muted);font-size:.92rem}
+.note{color:var(--muted);font-size:.9rem;max-width:62ch}
+footer{margin-top:3.5rem;border-top:1px solid var(--line);padding:1.5rem 0 3rem;color:var(--muted);font-size:.88rem}
+footer p{max-width:70ch;margin:.4rem 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="#top">Tickerbook</a>
+    <nav aria-label="Sections"><a href="#prices">Prices</a><a href="#exchanges">Exchanges</a><a href="#sources">Data sources</a></nav>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+  <h1>Live crypto prices, and where to trade them.</h1>
+  <p class="lede">Prices come straight from public market APIs and refresh every minute. Below the table are major exchanges, each linked to its official site.</p>
+
+  <section id="prices" aria-labelledby="p-h">
+    <h2 id="p-h" style="margin-top:0">Current prices (USD)</h2>
+    <div class="bar">
+      <span id="meta" aria-live="polite">Loading prices…</span>
+      <button id="refresh" type="button">Refresh now</button>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th scope="col">Coin</th><th scope="col">Price</th><th scope="col">24h change</th><th scope="col">24h volume</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="status" class="status" role="status">Fetching the latest prices…</div>
+    </div>
+  </section>
+
+  <section id="exchanges" aria-labelledby="e-h">
+    <h2 id="e-h">Exchanges</h2>
+    <p class="note">Availability, fees and supported coins depend on your country. Check that an exchange is licensed where you live before you sign up.</p>
+    <ul class="exlist" id="exlist"></ul>
+  </section>
+
+  <section id="sources" aria-labelledby="s-h">
+    <h2 id="s-h">Data sources</h2>
+    <p class="note">Prices load in your browser from the <a href="https://docs.coingecko.com/reference/introduction" rel="noopener">CoinGecko API</a>. If it is unavailable, the page falls back to the <a href="https://developers.binance.com/docs/binance-spot-api-docs/rest-api" rel="noopener">Binance public market-data API</a>. The line above the table names the source in use.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Tickerbook is an information page, not a broker or exchange. Nothing here is financial advice. Crypto prices swing sharply and you can lose all you invest.</p>
+    <p>Prices may be delayed or differ from what an exchange shows at the moment you trade.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var COINS=[
+    {id:"bitcoin",sym:"BTC",name:"Bitcoin"},
+    {id:"ethereum",sym:"ETH",name:"Ethereum"},
+    {id:"tether",sym:"USDT",name:"Tether"},
+    {id:"binancecoin",sym:"BNB",name:"BNB"},
+    {id:"solana",sym:"SOL",name:"Solana"},
+    {id:"ripple",sym:"XRP",name:"XRP"},
+    {id:"usd-coin",sym:"USDC",name:"USDC"},
+    {id:"dogecoin",sym:"DOGE",name:"Dogecoin"},
+    {id:"cardano",sym:"ADA",name:"Cardano"},
+    {id:"tron",sym:"TRX",name:"TRON"}
+  ];
+  var EXCHANGES=[
+    {n:"Coinbase",u:"https://www.coinbase.com",d:"US-listed exchange with a beginner-friendly app."},
+    {n:"Kraken",u:"https://www.kraken.com",d:"Long-running exchange known for its security record."},
+    {n:"Binance",u:"https://www.binance.com",d:"Largest exchange by trading volume. Not available in every country."},
+    {n:"Bitstamp",u:"https://www.bitstamp.net",d:"One of the oldest exchanges, licensed in the EU and UK."},
+    {n:"OKX",u:"https://www.okx.com",d:"Spot and derivatives trading with a wide coin list."},
+    {n:"Bybit",u:"https://www.bybit.com",d:"Spot and derivatives exchange with a global user base."}
+  ];
+
+  var rows=document.getElementById("rows"),
+      status=document.getElementById("status"),
+      meta=document.getElementById("meta"),
+      last={};
+
+  /* Exchange cards */
+  var ul=document.getElementById("exlist");
+  EXCHANGES.forEach(function(e){
+    var li=document.createElement("li"),h=document.createElement("h3"),p=document.createElement("p"),a=document.createElement("a");
+    h.textContent=e.n; p.textContent=e.d; a.href=e.u; a.rel="noopener noreferrer"; a.target="_blank"; a.textContent="Visit "+e.n;
+    li.append(h,p,a); ul.appendChild(li);
+  });
+
+  /* Formatting */
+  function usd(n){
+    var d=n>=1?2:(n>=0.01?4:6);
+    return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:d,maximumFractionDigits:d}).format(n);
+  }
+  function compact(n){
+    return n==null?"—":new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",notation:"compact",maximumFractionDigits:2}).format(n);
+  }
+
+  /* Providers: each resolves to {source, data:{SYM:{price,chg,vol}}} */
+  function timeout(url){
+    var c=new AbortController(),t=setTimeout(function(){c.abort()},8000);
+    return fetch(url,{signal:c.signal}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json()});
+  }
+  function coingecko(){
+    var ids=COINS.map(function(c){return c.id}).join(",");
+    return timeout("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids="+ids+"&price_change_percentage=24h")
+      .then(function(j){
+        var out={};
+        j.forEach(function(x){out[x.symbol.toUpperCase()]={price:x.current_price,chg:x.price_change_percentage_24h,vol:x.total_volume}});
+        if(!Object.keys(out).length)throw new Error("empty");
+        return {source:"CoinGecko",data:out};
+      });
+  }
+  function binance(){
+    var syms=COINS.filter(function(c){return c.sym!=="USDT"}).map(function(c){return c.sym+"USDT"});
+    return timeout("https://api.binance.com/api/v3/ticker/24hr?symbols="+encodeURIComponent(JSON.stringify(syms)))
+      .then(function(j){
+        var out={USDT:{price:1,chg:null,vol:null}};
+        j.forEach(function(x){out[x.symbol.replace(/USDT$/,"")]={price:+x.lastPrice,chg:+x.priceChangePercent,vol:+x.quoteVolume}});
+        return {source:"Binance",data:out};
+      });
+  }
+
+  function render(res){
+    rows.textContent="";
+    COINS.forEach(function(c){
+      var d=res.data[c.sym]; if(!d)return;
+      var tr=document.createElement("tr");
+      var td1=document.createElement("td"),b=document.createElement("b"),s=document.createElement("span");
+      td1.className="coin"; b.textContent=c.name; s.textContent=c.sym; td1.append(b,s);
+      var td2=document.createElement("td"); td2.className="price"; td2.textContent=usd(d.price);
+      if(last[c.sym]!=null&&last[c.sym]!==d.price)td2.classList.add("flash");
+      last[c.sym]=d.price;
+      var td3=document.createElement("td"); td3.className="num";
+      if(d.chg==null||isNaN(d.chg)){td3.textContent="—"}
+      else{td3.textContent=(d.chg>=0?"+":"")+d.chg.toFixed(2)+"%";td3.classList.add(d.chg>=0?"up":"down")}
+      var td4=document.createElement("td"); td4.className="num"; td4.textContent=compact(d.vol);
+      tr.append(td1,td2,td3,td4); rows.appendChild(tr);
+    });
+    status.hidden=true;
+    meta.textContent="Source: "+res.source+" · updated "+new Date().toLocaleTimeString();
+  }
+
+  function load(){
+    coingecko().catch(binance).then(render).catch(function(){
+      status.hidden=false; status.className="status err";
+      status.textContent="Prices could not be loaded. Check your connection and select Refresh now.";
+      meta.textContent="Last attempt failed";
+    });
+  }
+
+  document.getElementById("refresh").addEventListener("click",load);
+  load();
+  setInterval(load,60000);
+})();
+</script>
+</body>
+</html>
